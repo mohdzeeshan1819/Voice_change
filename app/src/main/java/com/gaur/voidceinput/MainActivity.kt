@@ -22,6 +22,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var micIV: ImageView
     private lateinit var tts: TextToSpeech
     private val REQUEST_CODE_SPEECH_INPUT = 1
+    private val REQUEST_CODE_RECORD_AUDIO = 2
+    private var recordedSpeech: String? = null
     var childVoice:Voice? = null
     var maleVoice:Voice? = null
 
@@ -33,38 +35,48 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         micIV = findViewById(R.id.idIVMic)
         val play = findViewById<Button>(R.id.play)
         val male = findViewById<Button>(R.id.male)
+        val female = findViewById<Button>(R.id.female)
+
 
 
         tts = TextToSpeech(this, this)
 
         micIV.setOnClickListener {
             // Start speech recognition
-            startSpeechRecognition()
+            startRecording()
 
+        }
+
+
+
+        female.setOnClickListener {
+            val text = outputTV.text.toString()
+            speak(text, VOICE_TYPE_FEMALE)
+            Log.e("VoiceDebug2", "male_voice")
         }
         male.setOnClickListener {
             val text = outputTV.text.toString()
-            speak(text, VOICE_TYPE_CHILD)
-            Log.e("VoiceDebug2", VOICE_TYPE_CHILD.toString())
-
+            speak(text, VOICE_TYPE_MALE)
+            Log.e("VoiceDebug2", "male_voice")
         }
 
         play.setOnClickListener {
             val text = outputTV.text.toString()
-            speak(text, VOICE_TYPE_MALE)
-            Log.e("VoiceDebug3", VOICE_TYPE_MALE.toString())
-
-
+            speak(text, VOICE_TYPE_CHILD)
+            Log.e("VoiceDebug3", "child_voice")
         }
+
+
     }
     private fun speak(text: String, voiceType: Int) {
-        val voice = if (voiceType == VOICE_TYPE_MALE) maleVoice else childVoice
+        val voiceName = getVoiceName(voiceType)
+        val voice = getVoiceForName(voiceName)
 
         if (voice != null) {
             tts.voice = voice
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
         } else {
-            val errorMessage = "Voice not found for voice type: $voiceType"
+            val errorMessage = "Voice not found for voice name: $voiceName"
             Log.e("VoiceDebug", errorMessage)
             Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
         }
@@ -72,46 +84,61 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
 
 
-    private fun getVoiceForType(voiceType: Int, language: Locale): Voice? {
-        val voices = tts.voices
-        for (voice in voices) {
-            // Log voice names for debugging
-            Log.d("VoiceDebug", "Available Voice: ${voice.name}")
-            Log.d("VoiceDebug1", "Available Voice: $language")
+//    private fun getVoiceForType(voiceType: Int, language: Locale): Voice? {
+//        val voices = tts.voices
+//        for (voice in voices) {
+//            // Log voice names for debugging
+//            Log.d("VoiceDebug", "Available Voice: ${voice.name}")
+//            Log.d("VoiceDebug1", "Available Voice: $language")
+//
+//            // Check voice type and language
+//            if (voice.locale == language && voice.name.contains(getVoiceName(voiceType), ignoreCase = true)) {
+//                return voice
+//            }
+//        }
+//        return null
+//    }
+private fun getVoiceForName(voiceName: String): Voice? {
+    val voices = tts.voices
+    for (voice in voices) {
+        // Log voice names for debugging
+        Log.d("VoiceDebug", "Available Voice: ${voice.name}")
 
-            // Check voice type and language
-            if (voice.locale == language && voice.name.contains(getVoiceName(voiceType), ignoreCase = true)) {
-                return voice
-            }
+        if (voice.name.equals(voiceName, ignoreCase = true)) {
+            return voice
         }
-        return null
     }
-
+    return null
+}
 
     private fun getVoiceName(voiceType: Int): String {
         return when (voiceType) {
             VOICE_TYPE_MALE -> {
-                "sanvika"
+                "hi-in-x-hia-local" // Example voice name for English (United States)
             }
             VOICE_TYPE_CHILD -> {
-                "anand"
+                "nl-nl-x-dma-local" // Adjust this according to your actual voice names
+            }
+            VOICE_TYPE_FEMALE -> {
+                "es-US-language" // Adjust this according to your actual voice names
             }
             else -> {
-                ""
+                "en-us-x-iol-local" // Default to male voice for unrecognized types
             }
         }
     }
 
 
 
-    private fun startSpeechRecognition() {
+
+    private fun startRecording() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to text")
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to record")
 
         try {
-            startActivityForResult(intent, REQUEST_CODE_SPEECH_INPUT)
+            startActivityForResult(intent, REQUEST_CODE_RECORD_AUDIO)
         } catch (e: Exception) {
             Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
@@ -120,14 +147,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == REQUEST_CODE_SPEECH_INPUT) {
+        if (requestCode == REQUEST_CODE_RECORD_AUDIO) {
             if (resultCode == Activity.RESULT_OK && data != null) {
                 val res = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                outputTV.text = res?.get(0)
+                recordedSpeech = res?.get(0)
+                if (recordedSpeech != null) {
+                    outputTV.text = recordedSpeech
+                }
             }
         }
     }
 
+    private fun playRecordedSpeech(voiceType: Int) {
+        recordedSpeech?.let { text ->
+            val voiceName = getVoiceName(voiceType)
+            speak(text, voiceType)
+        }
+    }
     override fun onDestroy() {
         super.onDestroy()
         tts.stop()
@@ -147,8 +183,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts.language = Locale.US
 
         // Load custom voices
-        val maleVoiceName = R.raw.male.toString()
-        val childVoiceName = R.raw.female.toString()
+        val maleVoiceName = "voice"
+        val childVoiceName = "child"
 
         val maleVoiceResId = resources.getIdentifier(maleVoiceName, "raw", packageName)
         val childVoiceResId = resources.getIdentifier(childVoiceName, "raw", packageName)
@@ -175,5 +211,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     companion object {
         private const val VOICE_TYPE_MALE = 1
         private const val VOICE_TYPE_CHILD = 2
+        private const val VOICE_TYPE_FEMALE=3
     }
 }

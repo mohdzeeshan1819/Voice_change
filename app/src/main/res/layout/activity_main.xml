@@ -60,4 +60,15 @@
         android:layout_marginTop="20dp"
         android:text="male" />
 
+    <Button
+        android:id="@+id/female"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_below="@+id/male"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:text="male" />
+
+
 </RelativeLayout>
